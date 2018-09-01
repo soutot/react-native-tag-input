@@ -96,6 +96,19 @@ type OptionalProps = {
    * Any ScrollView props (horizontal, showsHorizontalScrollIndicator, etc.)
   */
   scrollViewProps?: $PropertyType<ScrollView, 'props'>,
+  /**
+   * This callback gets called when the user clicks on a tag. The parent
+   * should update the value prop when this is called if they want to remove
+   * a tag.
+   */
+  onRemoveTag?: (index: number) => void,
+  
+  /**
+   * This callback gets called when the user presses backspace in the input. The parent
+   * should update the value prop when this is called if they want to remove
+   * a tag.
+   */
+  removeTagOnBackspace?: (index: number) => void,
 };
 type Props<T> = RequiredProps<T> & OptionalProps;
 type State = {
@@ -122,6 +135,8 @@ class TagInput<T> extends React.PureComponent<Props<T>, State> {
     maxHeight: PropTypes.number,
     onHeightChange: PropTypes.func,
     scrollViewProps: PropTypes.shape(ScrollView.propTypes),
+    onRemoveTag: PropTypes.func,
+    removeTagOnBackspace: PropTypes.func,
   };
   props: Props<T>;
   state: State;
@@ -215,7 +230,13 @@ class TagInput<T> extends React.PureComponent<Props<T>, State> {
     if (this.props.text !== '' || event.nativeEvent.key !== 'Backspace') {
       return;
     }
+    if (typeof this.props.removeTagOnBackspace === 'function') {
+      this.props.removeTagOnBackspace();
+      return;
+    }
+    
     const tags = [...this.props.value];
+    if (tags.length <= 0) return;
     tags.pop();
     this.props.onChange(tags);
     this.scrollToEnd();
@@ -228,6 +249,10 @@ class TagInput<T> extends React.PureComponent<Props<T>, State> {
   }
 
   removeIndex = (index: number) => {
+    if (typeof this.props.onRemoveTag === 'function') {
+      this.props.onRemoveTag(index);
+      return;
+    }
     const tags = [...this.props.value];
     tags.splice(index, 1);
     this.props.onChange(tags);
@@ -245,19 +270,33 @@ class TagInput<T> extends React.PureComponent<Props<T>, State> {
   }
 
   render() {
-    const tags = this.props.value.map((tag, index) => (
+    const {
+      value,
+      labelExtractor,
+      tagColor,
+      tagTextColor,
+      tagContainerStyle,
+      tagTextStyle,
+      editable,
+      onRemoveTag,
+      removeTagOnBackspace,
+    } = this.props;
+
+    const tags = value.map((tag, index) => (
       <Tag
         index={index}
-        label={this.props.labelExtractor(tag)}
-        isLastTag={this.props.value.length === index + 1}
+        label={labelExtractor(tag)}
+        isLastTag={value.length === index + 1}
         onLayoutLastTag={this.onLayoutLastTag}
         removeIndex={this.removeIndex}
-        tagColor={this.props.tagColor}
-        tagTextColor={this.props.tagTextColor}
-        tagContainerStyle={this.props.tagContainerStyle}
-        tagTextStyle={this.props.tagTextStyle}
+        tagColor={tagColor}
+        tagTextColor={tagTextColor}
+        tagContainerStyle={tagContainerStyle}
+        tagTextStyle={tagTextStyle}
         key={index}
-        editable={this.props.editable}
+        editable={editable}
+        onRemoveTag={() => onRemoveTag && onRemoveTag(index)}
+        removeTagOnBackspace={() => removeTagOnBackspace && removeTagOnBackspace}
       />
     ));
 
